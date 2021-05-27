@@ -1,9 +1,19 @@
 from django.contrib import admin
 from . import models
 
-# Register your models here.
+admin.site.register(models.Category)
 
+
+@admin.register(models.Post)
 class AuthorAdmin(admin.ModelAdmin):
-    list_display = ('title','status','slug','author')
+    list_display = ('title', 'status', 'slug', 'author')
+    prepopulated_fields = {
+        'slug': ("title", ),
+    }
 
-admin.site.register(models.Post, AuthorAdmin)
+
+@admin.register(models.Comment)
+class CommentAdmin(admin.ModelAdmin):
+    list_display = ('post', 'name', 'publish', 'status')
+    list_filter = ('status', 'publish')
+    search_fields = ('name', 'email', 'content')
