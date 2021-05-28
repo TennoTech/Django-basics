@@ -2,12 +2,19 @@ from django.db import models
 from django.utils import timezone
 from django.contrib.auth.models import User
 from django.urls import reverse
+from mptt.models import MPTTModel, TreeForeignKey
+
+
+def user_directory_path(instance, filename):
+    return f'posts/{instance.id}/{filename}'
+
 
 class Category(models.Model):
     name = models.CharField(max_length=100)
 
     def __str__(self):
         return self.name
+
 
 class Post(models.Model):
     class NewManager(models.Manager):
@@ -22,6 +29,8 @@ class Post(models.Model):
     title = models.CharField(max_length=250)
     category = models.ForeignKey(Category, on_delete=models.PROTECT, default=1)
     excerpt = models.TextField(null=True)
+    image = models.ImageField(upload_to=user_directory_path,
+                              default='posts/background.png')
     slug = models.SlugField(max_length=250, unique_for_date='publish')
     publish = models.DateTimeField(default=timezone.now)
     author = models.ForeignKey(User,
@@ -42,20 +51,25 @@ class Post(models.Model):
         return self.title
 
 
-class Comment(models.Model):
+class Comment(MPTTModel):
     # everytime a comment is created theres going to be a link
     # between the comment and an item in the post table
     post = models.ForeignKey(Post,
                              on_delete=models.CASCADE,
                              related_name='comments')
+    parent = TreeForeignKey('self',
+                                   on_delete=models.CASCADE,
+                                   null=True,
+                                   blank=True,
+                                   related_name='children')
     name = models.CharField(max_length=50)
     email = models.EmailField()
     content = models.TextField()
     publish = models.DateTimeField(auto_now_add=True)
     status = models.BooleanField(default=True)
 
-    class Meta:
-        ordering = ('publish', )
+    class MPTTMeta:
+        order_insertion_by = ['publish']
 
     def __str__(self):
         return f'Comment by {self.name}'
