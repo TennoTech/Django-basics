@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from .models import Post, Category
 from .forms import NewCommentForm
 from django.views.generic import ListView
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 
 def home(request):
@@ -11,8 +12,20 @@ def home(request):
 
 def post_single(request, post):
     post = get_object_or_404(Post, slug=post, status='published')
-    comments = post.comments.filter(status=True)
+
+    allcomments = post.comments.filter(status=True)
+    page = request.GET.get('page', 1)
+    paginator = Paginator(allcomments, 3)
+
+    try: 
+        comments = paginator.page(page)
+    except PageNotAnInteger:
+        comments = paginator.page(1)
+    except EmptyPage:
+        comments = paginator.page(paginator.num_pages)
+    
     user_comment = None
+
     if request.method == 'POST':
         comment_form = NewCommentForm(request.POST)
         if comment_form.is_valid():
@@ -28,7 +41,8 @@ def post_single(request, post):
         'post': post,
         'user_comments': user_comment,
         'comments': comments,
-        'comment_form': comment_form
+        'comment_form': comment_form,
+        'allcomments': allcomments
     }
     return render(request, 'single.html', context)
 
