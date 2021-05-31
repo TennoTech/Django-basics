@@ -1,8 +1,9 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from .models import Post, Category
-from .forms import NewCommentForm
+from .forms import NewCommentForm, PostSearchForm
 from django.views.generic import ListView
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.db.models import Q
 
 
 def home(request):
@@ -17,13 +18,13 @@ def post_single(request, post):
     page = request.GET.get('page', 1)
     paginator = Paginator(allcomments, 3)
 
-    try: 
+    try:
         comments = paginator.page(page)
     except PageNotAnInteger:
         comments = paginator.page(1)
     except EmptyPage:
         comments = paginator.page(paginator.num_pages)
-    
+
     user_comment = None
 
     if request.method == 'POST':
@@ -66,3 +67,30 @@ def category_list(request):
     category = Category.objects.exclude(name='default')
     context = {'category_list': category}
     return context
+
+
+def post_search(request):
+    form = PostSearchForm()
+    # what the user has typed in
+    q = ''
+    c = ''
+    result = []
+    query = Q()
+
+    if 'q' in request.GET:
+        form = PostSearchForm(request.GET)
+        if form.is_valid():
+            q = form.cleaned_data['q']
+            c = form.cleaned_data['c']
+
+            # if data is not null it will be added to the query
+            if c is not None:
+                query &= Q(category=c)
+
+            if q is not None:
+                query &= Q(title__contains=q)
+
+            result = Post.objects.filter(query)
+
+    context = {'form': form, 'q': q, 'results': result}
+    return render(request, 'search.html', context)
